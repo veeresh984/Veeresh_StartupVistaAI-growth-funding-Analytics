@@ -1,37 +1,42 @@
 import streamlit as st
-import pandas as pd
-from sklearn.cluster import KMeans
+from sklearn.preprocessing import MinMaxScaler
 
-df = pd.read_csv("data/startup_data.csv")
+from utils.data_loader import load_data
 
-features = df[
-[
+st.title("🏆 Startup Scoring")
+
+df = load_data()
+
+features = [
     "Funding Amount (M USD)",
     "Revenue (M USD)",
-    "Valuation (M USD)"
+    "Valuation (M USD)",
+    "Employees",
+    "Market Share (%)"
 ]
+
+scaler = MinMaxScaler()
+
+scaled = scaler.fit_transform(
+    df[features]
+)
+
+df["Health Score"] = (
+    scaled.mean(axis=1) * 100
+)
+
+top10 = (
+    df.sort_values(
+        "Health Score",
+        ascending=False
+    )
+    .head(10)
+)
+
+st.dataframe(top10[
+[
+    "Startup Name",
+    "Industry",
+    "Health Score"
 ]
-
-model = KMeans(
-    n_clusters=4,
-    random_state=42
-)
-
-df["Cluster"] = model.fit_predict(
-    features
-)
-
-st.title("Startup Segmentation")
-
-st.dataframe(df.head())
-
-st.plotly_chart(
-    px.scatter(
-        df,
-        x="Revenue (M USD)",
-        y="Valuation (M USD)",
-        color="Cluster",
-        hover_name="Startup Name"
-    ),
-    use_container_width=True
-)
+])
