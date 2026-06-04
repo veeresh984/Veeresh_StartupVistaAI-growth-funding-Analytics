@@ -17,7 +17,7 @@ st.set_page_config(
 # --------------------------------------------------
 
 try:
-    df = load_data()
+    df = load_data("data/startup_data.csv")
 except Exception as e:
     st.error(f"Error loading dataset: {e}")
     st.stop()
