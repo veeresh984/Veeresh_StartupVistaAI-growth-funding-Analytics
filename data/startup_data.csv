@@ -1,0 +1,26 @@
+startup-analytics-dashboard/
+│
+├── data/
+│   └── startup_data.csv
+│
+├── assets/
+│   ├── logo.png
+│   └── banner.png
+│
+├── pages/
+│   ├── 01_Executive_Summary.py
+│   ├── 02_Funding_Analytics.py
+│   ├── 03_Industry_Analysis.py
+│   ├── 04_Regional_Insights.py
+│   ├── 05_Startup_Scoring.py
+│   └── 06_AI_Insights.py
+│
+├── utils/
+│   ├── data_loader.py
+│   ├── charts.py
+│   └── metrics.py
+│
+├── app.py
+├── requirements.txt
+├── README.md
+└── .gitignore
