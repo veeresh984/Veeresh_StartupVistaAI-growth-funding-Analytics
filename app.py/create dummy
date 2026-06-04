@@ -1,1 +1,289 @@
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.preprocessing import MinMaxScaler
 
+st.set_page_config(
+    page_title="Startup Analytics Dashboard",
+    page_icon="🚀",
+    layout="wide"
+)
+
+# -----------------------------------
+# Load Data
+# -----------------------------------
+@st.cache_data
+def load_data():
+    return pd.read_csv("data/startup_data.csv")
+
+df = load_data()
+
+# -----------------------------------
+# Sidebar
+# -----------------------------------
+st.sidebar.title("🚀 Startup Analytics")
+
+industry = st.sidebar.multiselect(
+    "Industry",
+    df["Industry"].unique(),
+    default=df["Industry"].unique()
+)
+
+region = st.sidebar.multiselect(
+    "Region",
+    df["Region"].unique(),
+    default=df["Region"].unique()
+)
+
+filtered = df[
+    (df["Industry"].isin(industry)) &
+    (df["Region"].isin(region))
+]
+
+# -----------------------------------
+# Title
+# -----------------------------------
+st.title("🚀 Startup Deep Analytics Dashboard")
+st.markdown("---")
+
+# -----------------------------------
+# KPI Cards
+# -----------------------------------
+col1,col2,col3,col4,col5 = st.columns(5)
+
+col1.metric(
+    "Startups",
+    len(filtered)
+)
+
+col2.metric(
+    "Total Funding",
+    f"${filtered['Funding Amount (M USD)'].sum():,.0f}M"
+)
+
+col3.metric(
+    "Total Revenue",
+    f"${filtered['Revenue (M USD)'].sum():,.0f}M"
+)
+
+col4.metric(
+    "Avg Valuation",
+    f"${filtered['Valuation (M USD)'].mean():,.0f}M"
+)
+
+profit_rate = (
+    filtered["Profitable"].mean()*100
+)
+
+col5.metric(
+    "Profitable %",
+    f"{profit_rate:.1f}%"
+)
+
+st.markdown("---")
+
+# =====================================
+# Funding Analysis
+# =====================================
+
+left,right = st.columns(2)
+
+with left:
+
+    fig = px.histogram(
+        filtered,
+        x="Funding Amount (M USD)",
+        nbins=30,
+        title="Funding Distribution"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+with right:
+
+    fig = px.box(
+        filtered,
+        x="Industry",
+        y="Funding Amount (M USD)",
+        title="Funding by Industry"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+# =====================================
+# Valuation vs Revenue
+# =====================================
+
+fig = px.scatter(
+    filtered,
+    x="Revenue (M USD)",
+    y="Valuation (M USD)",
+    color="Industry",
+    size="Funding Amount (M USD)",
+    hover_name="Startup Name",
+    title="Valuation vs Revenue"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+# =====================================
+# Industry Analysis
+# =====================================
+
+industry_stats = (
+    filtered
+    .groupby("Industry")
+    .agg({
+        "Funding Amount (M USD)":"mean",
+        "Revenue (M USD)":"mean",
+        "Valuation (M USD)":"mean"
+    })
+    .reset_index()
+)
+
+fig = px.bar(
+    industry_stats,
+    x="Industry",
+    y="Valuation (M USD)",
+    color="Industry",
+    title="Average Industry Valuation"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+# =====================================
+# Region Analysis
+# =====================================
+
+region_stats = (
+    filtered
+    .groupby("Region")
+    ["Funding Amount (M USD)"]
+    .sum()
+    .reset_index()
+)
+
+fig = px.pie(
+    region_stats,
+    names="Region",
+    values="Funding Amount (M USD)",
+    title="Funding Share by Region"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+# =====================================
+# Correlation Heatmap
+# =====================================
+
+numeric = filtered.select_dtypes(
+    include="number"
+)
+
+corr = numeric.corr()
+
+fig = px.imshow(
+    corr,
+    text_auto=True,
+    aspect="auto",
+    title="Correlation Matrix"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+# =====================================
+# Startup Health Score
+# =====================================
+
+score_df = filtered.copy()
+
+features = [
+    "Funding Amount (M USD)",
+    "Valuation (M USD)",
+    "Revenue (M USD)",
+    "Employees",
+    "Market Share (%)"
+]
+
+scaler = MinMaxScaler()
+
+score_df[features] = scaler.fit_transform(
+    score_df[features]
+)
+
+score_df["Health Score"] = (
+    score_df[features].mean(axis=1) * 100
+)
+
+top10 = (
+    score_df
+    .sort_values(
+        "Health Score",
+        ascending=False
+    )
+    .head(10)
+)
+
+st.subheader("🏆 Top 10 Startup Health Scores")
+
+st.dataframe(
+    top10[
+        [
+            "Startup Name",
+            "Industry",
+            "Health Score"
+        ]
+    ]
+)
+
+# =====================================
+# AI Insights
+# =====================================
+
+st.subheader("🤖 Executive Insights")
+
+highest_industry = (
+    filtered.groupby("Industry")
+    ["Valuation (M USD)"]
+    .mean()
+    .idxmax()
+)
+
+highest_region = (
+    filtered.groupby("Region")
+    ["Funding Amount (M USD)"]
+    .sum()
+    .idxmax()
+)
+
+st.success(
+    f"""
+    • Highest Valuation Industry: {highest_industry}
+
+    • Most Funded Region: {highest_region}
+
+    • Profitability Rate: {profit_rate:.2f}%
+
+    • Average Revenue:
+    ${filtered['Revenue (M USD)'].mean():,.2f}M
+    """
+)
